@@ -47,20 +47,14 @@ COPY chargebacks FROM 'D:\\Project_Test\\payment_fraud_analytics_aviation\\Gemin
 
 COPY blacklist_data FROM 'D:\\Project_Test\\payment_fraud_analytics_aviation\\Gemini Gen\\table3_blacklist.csv' WITH (FORMAT csv, HEADER true)
 
--- Creating indexes to improve query performance across 'transactions' and 'chargebacks' tables
-CREATE INDEX txn_id
-ON transactions(payment_id);
-
+-- Creating indexes to improve query performance in 'transactions' table
 CREATE INDEX emails
 ON transactions(email_address);
 
-CREATE INDEX cbk_id
-ON chargebacks(chargeback_id);
-
--- Checking the newly created indexes
+-- Checking the newly created index
 SELECT indexname, indexdef 
 FROM pg_indexes 
-WHERE tablename = 'transactions' OR tablename = 'chargebacks';
+WHERE tablename = 'transactions';
 
 -------------------------------------------------
 --- Data integrity check and transformation---
@@ -91,4 +85,51 @@ ADD COLUMN card_last_four VARCHAR(4)
 GENERATED ALWAYS AS (RIGHT(masked_cc, 4)) STORED;
 
 -- Exporting the transactions table as CSV before we proceed with EDA in Python
-COPY transactions TO 'D:\\GitHub Projects\\airline-fraud-radar\\txns_cleaned.csv' WITH (FORMAT csv, HEADER true);
+COPY (SELECT * FROM transactions) TO 'D:\\GitHub Projects\\airline-fraud-radar\\txns_cleaned.csv' WITH (FORMAT csv, HEADER true);
+
+-------------------------------------------------
+--- Fraud insights using SQL Window functions---
+-------------------------------------------------
+
+-- Velocity based fraud detection by checking multiple transactions made using the same ip_address with a time difference of less than 15 minutes between transactions
+WITH repeating_ips AS(
+	SELECT ip_address
+	FROM transactions
+	GROUP BY ip_address
+	HAVING COUNT(*) > 1
+),
+
+time_diff AS (
+	SELECT 
+		*,
+		LAG(timestamp, 1) OVER(PARTITION BY ip_address ORDER BY timestamp) AS prev_timestamp
+	FROM transactions
+)
+
+SELECT 
+	payment_id,
+	ip_address,
+	prev_timestamp
+FROM time_diff
+WHERE ip_address IN (SELECT ip_address FROM repeating_ips) AND (timestamp - prev_timestamp <= INTERVAL '00:15:00')
+ORDER BY ip_address, timestamp;
+
+-- Calculating weekly fraud percentage along with the total revenue 
+SELECT
+	DATE_TRUNC('week', timestamp) AS txn_week,
+	COUNT(payment_id) AS total_txns,
+	SUM(is_fraud) AS fraud_txns, 
+	SUM(amount) AS total_revenue,
+	SUM(CASE WHEN is_fraud = 1 THEN amount ELSE 0 END) AS fraud_loss,
+	ROUND((SUM(CASE WHEN is_fraud = 1 THEN amount ELSE 0 END)) * 100 / SUM(amount), 2) AS fraud_loss_percentage
+FROM transactions
+GROUP BY DATE_TRUNC('week', timestamp)
+ORDER BY txn_week;
+
+-- Comparing total fraud loss amount vs total chargeback amount
+SELECT 
+	SUM(CASE WHEN t.is_fraud = 1 THEN t.amount ELSE 0 END) AS fraud_loss,
+	SUM(c.amount) AS chargeback_loss
+FROM transactions t
+JOIN chargebacks c
+	ON t.payment_id = c.payment_id

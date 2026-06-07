@@ -47,6 +47,21 @@ COPY chargebacks FROM 'D:\\Project_Test\\payment_fraud_analytics_aviation\\Gemin
 
 COPY blacklist_data FROM 'D:\\Project_Test\\payment_fraud_analytics_aviation\\Gemini Gen\\table3_blacklist.csv' WITH (FORMAT csv, HEADER true)
 
+-- Creating indexes to improve query performance across 'transactions' and 'chargebacks' tables
+CREATE INDEX txn_id
+ON transactions(payment_id);
+
+CREATE INDEX emails
+ON transactions(email_address);
+
+CREATE INDEX cbk_id
+ON chargebacks(chargeback_id);
+
+-- Checking the newly created indexes
+SELECT indexname, indexdef 
+FROM pg_indexes 
+WHERE tablename = 'transactions' OR tablename = 'chargebacks';
+
 -------------------------------------------------
 --- Data integrity check and transformation---
 -------------------------------------------------
@@ -75,17 +90,5 @@ ALTER TABLE transactions
 ADD COLUMN card_last_four VARCHAR(4) 
 GENERATED ALWAYS AS (RIGHT(masked_cc, 4)) STORED;
 
--- Creating indexes to improve query performance across 'transactions' and 'chargebacks' tables
-CREATE INDEX txn_id
-ON transactions(payment_id);
-
-CREATE INDEX emails
-ON transactions(email_address);
-
-CREATE INDEX cbk_id
-ON chargebacks(chargeback_id);
-
--- Checking the newly created indexes
-SELECT indexname, indexdef 
-FROM pg_indexes 
-WHERE tablename = 'transactions' OR tablename = 'chargebacks';
+-- Exporting the transactions table as CSV before we proceed with EDA in Python
+COPY transactions TO 'D:\\GitHub Projects\\airline-fraud-radar\\txns_cleaned.csv' WITH (FORMAT csv, HEADER true);

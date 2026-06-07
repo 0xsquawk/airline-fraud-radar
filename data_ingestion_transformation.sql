@@ -41,7 +41,6 @@ CREATE TABLE blacklist_data (
 )
 
 -- Importing data from source files into SQL tables
-
 COPY transactions FROM 'D:\\Project_Test\\payment_fraud_analytics_aviation\\Gemini Gen\table1_transactions.csv' WITH (FORMAT csv, HEADER true);
 
 COPY chargebacks FROM 'D:\\Project_Test\\payment_fraud_analytics_aviation\\Gemini Gen\\table2_chargebacks.csv' WITH (FORMAT csv, HEADER true);

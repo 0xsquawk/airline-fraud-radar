@@ -1,6 +1,5 @@
 catboost==1.2.10
-imbalanced_learn==0.14.2
-imblearn==0.0
+imbalanced-learn==0.14.2
 itables==2.8.1
 matplotlib==3.11.0
 numpy==2.5.0

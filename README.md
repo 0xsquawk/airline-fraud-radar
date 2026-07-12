@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-# airline-fraud-radar
-R.A.D.A.R. - Airline payment fraud detection and analytics using machine learning 
-=======
 # R.A.D.A.R.
 ### Real-time Airline Detection and Analytics for Risk
 
@@ -142,4 +138,3 @@ A GPU is recommended for the CatBoost training cell. The `task_type="GPU"` param
 ## License
 
 This project uses a fully synthetic dataset. No real passenger, payment, or airline data is included.
->>>>>>> development
